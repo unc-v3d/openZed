@@ -64,13 +64,6 @@ if(${WITH_cudaArrayBM})
 	endif()
 
 	set(CUDA_ARRAY_INCLUDE_DIR ${cudaArray_SOURCE_DIR}/cudaArray)
-	
-	include_directories(
-	   
-	 	${CUDA_ARRAY_INCLUDE_DIR}
-	
-	)
-
 
 endif()
 

@@ -29,9 +29,10 @@ if(${WITH_CUDA})
 endif()
 
 
+
 add_executable(zedCameraApp main.cpp ${CUDA_OPENCV_STEREO_SOURCE} ${CPU_STEREO_SOURCE} ${CUDA_EXT_STEREO_SOURCE} planedetection.cpp zedCamera.cpp)
 
-# if using cuda tun on the flag to use gpu in code so that gpu sstereo function definitons are used
+# if using cuda turn on the flag to use gpu in code so that gpu sstereo function definitons are used
 if(${WITH_CUDA})
 
 	target_compile_definitions(zedCameraApp PRIVATE USE_GPU=1)
