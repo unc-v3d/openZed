@@ -29,65 +29,44 @@
 //OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 //OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include"zedCamera.h"
-#include"planedetection.h"
+//file created for simple api for zed camera without using the zed sdk
+#ifndef CUDA_ARRAY_BM_H
+#define CUDA_ARRAY_BM_H
+
+#include"stereointerface.h"
+#include"cudaArrayBM/StereoMatcher.h"
+
+namespace nfs{
+
+
+namespace vision{
 
 
 
-int main(int argc, char** argv){
-
-    if(argc <3){
-		std::cout<<"program, path2camera, abs height of camera above ground in meters"<<std::endl;
-		std::cout<<"eg: zedCameraApp /dev/video0 0.5"<<std::endl;
-		return -1;
-	}
- 
-std::string camName(argv[1]); 
-std::string calibFilePath(argv[2]); 
-float dist;
-sscanf(argv[3],"%f",&dist);
-
-std::cout<<"Using camera at "<< camName<<std::endl;
-std::cout<<"Using calibration file at "<<calibFilePath<<std::endl;
-
-nfs::vision::zedCamera zcam(camName,calibFilePath,nfs::vision::zedCamera::RESOLUTION::HD, 30,true,true);
+class cudaArrayBM : public stereoMatcherInterface {
+public:
 
 
 
-nfs::vision::zedCamera::printError(zcam.init());
-bool validIm = true;
-	char keypress = 'r';
- 
+    cudaArrayBM(const stereoMatcherInterface::stereoParams params);
+    ~cudaArrayBM();
+
+    void loadOptions(const std::string path2File) ;
+    void initUndistortRectify(const lookupMap xLeftMap, const lookupMap yLeftMap,const lookupMap xRightMap,const lookupMap yRightMap);
+    colorImage undistortRectify(const colorImage image, const bool isLeft);
+    void undistortRectify(colorImage rawLeftImage, colorImage rawRightImage);
+    colorImage getRectifiedImage(const bool isLeft) const;
+    void match();
+    measureImage getDisparity();
+    measureImage getDepth();
+    pointcloudImage getPointCloudImage();
 
 
+private:
+    ext_stereo::StereoMatcher* m_stereoBlockMatcher;
+    cv::Mat m_xyLeftMap;
+    cv::Mat m_xyRightMap;
+};
 
-
-cv::Mat K = zcam.getRectifiedIntrinsicMatrix(nfs::vision::zedCamera::SIDE::LEFT);
-
-	while(keypress != 'q' && validIm){
-			validIm = zcam.step();
-		
-if(validIm){	
-cv::Mat mask;
-    cv::Mat disparityImage  =  zcam.getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
-
-cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.1f , true, 0.8f);
-
-
-std::cout << " Plane eqn is : "<< plane << std::endl;
-cv::Mat disp;
-
-
-    disparityImage.convertTo(disp, CV_8UC1,0.25);
-		cv::imshow("Disparity", disp);
-        cv::imshow("Mask", mask);
-        keypress = static_cast<char>(cv::waitKey(1));
-
-        if(keypress == 's'){
-            zcam.savePointcloud("pc",true,"PLY");//zcam.savePointcloud("pc",true,"PCD");
-        }
-
-	}
-}
- 
-}
+}}
+#endif //CUDA_ARRAY_BM_H

@@ -32,7 +32,6 @@
 //file created for simple api for zed camera without using the zed sdk
 #include "zedCamera.h"
 
-//#define INVALID_DEPTH 10000
 #define MAX_DISPARITY_GPU 128
 #define MIN_DISPARITY_GPU 8
 #define MAX_DEPTH MAX_DISPARITY_GPU
@@ -40,6 +39,13 @@
 
 #include <stdlib.h>   //abs function
 #include<exception>
+
+
+#ifdef USE_GPU
+#include"stereo/cudaArrayBM.h"
+//#include "stereo/cudaopencvstereo.h"
+#endif
+
 
 namespace nfs{ namespace vision{
 
@@ -88,18 +94,18 @@ void zedCamera::construct(){
     m_radDistRight = cv::Mat::zeros(4, 1, CV_64F);
     m_R = cv::Mat::eye(3, 3, CV_64F);
     m_T = cv::Mat::zeros(3, 1, CV_64F);
-    m_baselineCM =1;// fake baseline
+    m_baseline =1;// fake baseline
 
 #ifdef USE_GPU
-    m_stereoMatcher = nullptr;
+    m_gpuStereo = nullptr;
 #endif
 }
 
 
 zedCamera::~zedCamera(){
 #ifdef USE_GPU
-    if(m_stereoMatcher)
-        delete m_stereoMatcher;
+    if(m_gpuStereo)
+        delete m_gpuStereo;
 #endif
 }
 
@@ -167,9 +173,9 @@ zedCamera::ERRORCODE zedCamera::init(){
 
 
     //recollect the fps and resolution from the camera
-    m_height = m_cam.get(CV_CAP_PROP_FRAME_HEIGHT);
-    m_width = m_cam.get(CV_CAP_PROP_FRAME_WIDTH)/2;
-    m_fps = m_cam.get(CV_CAP_PROP_FPS);
+    m_height = static_cast<int>(m_cam.get(CV_CAP_PROP_FRAME_HEIGHT));
+    m_width = static_cast<int>(m_cam.get(CV_CAP_PROP_FRAME_WIDTH)/2);
+    m_fps = static_cast<int>(m_cam.get(CV_CAP_PROP_FPS));
 
 
 
@@ -201,43 +207,43 @@ zedCamera::ERRORCODE zedCamera::init(){
 
 
 
-
+        stereoMatcherInterface::stereoParams params;
+        params.baseline = m_baseline;
+        params.focalLength = static_cast<float>(m_radDistLeft.at<double>(0,0));
+        params.disparity2depth  = m_disp2depthTransform;
+        params.width = m_width;
+        params.height = m_height;
+        m_cpuStereo = new opencvStereo(params);
+        m_cpuStereo->loadOptions("");
+        m_cpuStereo->initUndistortRectify(m_xLeftRectify,m_yLeftRectify,m_xRightRectify,m_yRightRectify);
 
 #ifdef USE_GPU
         if(m_useGPU){
-            int deviceCount;
-            cudaError_t e = cudaGetDeviceCount(&deviceCount);
-            if(e != cudaSuccess){
-                retVal = retVal + ERRORCODE::NO_GPU;
-                return retVal;
+
+            //make sure that disparity 2 depth matrix is continuous
+            //GPU code assumes continuoius memory
+            //also GPU code assumes that the matrix is floating 4x4 matrix
+
+            if(params.disparity2depth.type() != CV_32FC1){
+                cv::Mat Q = cv::Mat(params.disparity2depth.rows,params.disparity2depth.cols,CV_32FC1);
+
+                params.disparity2depth.convertTo(Q,CV_32FC1);
+
+                Q.copyTo(params.disparity2depth);
             }
 
-            //
-            // set up our matcher
-            //
+            if(!params.disparity2depth.isContinuous()){
+                params.disparity2depth = params.disparity2depth.clone();
+            }
+            m_gpuStereo = new cudaArrayBM(params);
+           // m_gpuStereo = new opencvStereoGPU(params,opencvStereoGPU::METHOD::BLOCK_MATCHING,0, true);
+            m_gpuStereo->loadOptions("");
+            m_gpuStereo->initUndistortRectify(m_xLeftRectify,m_yLeftRectify,m_xRightRectify,m_yRightRectify);
 
-
-            cv::Mat tmp;
-            cv::initUndistortRectifyMap(m_KLeft, m_radDistLeft, R1,  P1, outImSize,CV_32FC2, m_leftMapGPU,tmp);
-            cv::initUndistortRectifyMap(m_KRight, m_radDistRight,R2,  P2, outImSize,CV_32FC2, m_rightMapGPU,tmp);
-
-            float baseline = cv::norm(m_T);
-
-            float focal_length = m_rect_KLeft.at<double>(0,0);
-
-            const StereoMatcher::Options options = {
-                (unsigned int)m_width,(unsigned int) m_height,
-                WINDOW_SIZE_GPU,MIN_DISPARITY_GPU, MAX_DISPARITY_GPU,baseline ,focal_length , 1.0f, MAX_DEPTH};
-
-            m_stereoMatcher = new StereoMatcher(options);
-
-            m_stereoMatcher->initUndistortRectifyMaps(m_leftMapGPU.data, m_rightMapGPU.data);
         }
 #endif
 
     }
-
-
 
 
     return retVal;
@@ -253,7 +259,7 @@ bool zedCamera::step(){
 
 
 
-zedCamera::colorImage zedCamera::getImage(const SIDE side,const IMAGE imageType){
+colorImage zedCamera::getImage(const SIDE side,const IMAGE imageType){
 
     colorImage retImage = colorImage(m_height, m_width, CV_8UC3);
 
@@ -287,11 +293,27 @@ zedCamera::colorImage zedCamera::getImage(const SIDE side,const IMAGE imageType)
             else cv::remap(rawColorImage ,   retImage, m_xRightUndist , m_yRightUndist, cv::INTER_AREA);
 
 
-        } else{ //imageType == IMAGE::RECTIFIED // undistort and rectify according to calibration data and return the image
+        } else if (imageType == IMAGE::RECTIFIED){ // undistort and rectify according to calibration data and return the image
 
-            if(side == SIDE::LEFT)
-                cv::remap(rawColorImage ,   retImage, m_xLeftRectify , m_yLeftRectify, cv::INTER_AREA);
-            else cv::remap(rawColorImage ,   retImage, m_xRightRectify , m_yRightRectify, cv::INTER_AREA);
+            if(side == SIDE::LEFT){
+#ifdef USE_GPU
+
+                m_gpuStereo->undistortRectify(rawColorImage,true);
+#else
+                m_cpuStereo->undistortRectify(rawColorImage,true);
+#endif
+
+            } else{
+#ifdef USE_GPU
+
+                m_gpuStereo->undistortRectify(rawColorImage,false);
+#else
+                m_cpuStereo->undistortRectify(rawColorImage,false);
+#endif
+            }
+
+        } else{
+            throw std::invalid_argument("Enum Image has only three options: RAW, UNDISTORTED and RECTIFIED");
         }
 
 
@@ -304,130 +326,56 @@ zedCamera::colorImage zedCamera::getImage(const SIDE side,const IMAGE imageType)
 }
 
 
-zedCamera::measureImage zedCamera::getImage(const IMAGE_MEASURE meas, const int minDisparity, const int numDisparity){
-
+measureImage zedCamera::getImage(const IMAGE_MEASURE meas, const int minDisparity, const int numDisparity){
 
 
     colorImage left = m_rawImage(cv::Rect(0,0,m_width,m_height));
 
-
     colorImage right = m_rawImage(cv::Rect(m_width,0,m_width,m_height));
-
-
-    cv::Mat imLeftGrey,imRightGrey;
-
-
-    cv::cvtColor(left,imLeftGrey ,CV_BGR2GRAY);
-    cv::cvtColor(right,imRightGrey,CV_BGR2GRAY);
-
-
 
 
 #ifdef USE_GPU
     if(m_useGPU){
-        //call the gpu code
-        //  m_stereoMatcher->setMaxDisparity(minDisparity + numDisparity);
-        m_disparity = measureImage(m_height, m_width, CV_32F);
-        // stereo-rectified intensity images
-        m_stereoMatcher->init_frame(imLeftGrey.data, imRightGrey.data);
-        //find disparity
-        m_stereoMatcher->match();
+
+        m_gpuStereo->undistortRectify(left,right);
+        m_gpuStereo->match();
+        m_disparity = m_gpuStereo->getDisparity();
 
 
-        /*  cv::Mat tmp = measureImage(m_height, m_width, CV_32FC1);
-       m_stereoMatcher->download_depth(tmp.data);
-
-{ double _min, _max;
-      cv::minMaxIdx(tmp, &_min, &_max);
-std::cout<<_min<<" " <<_max<<std::endl;
-
-return tmp;
-
-} */
-        //even if the passed param is depth, it always returns disparity
-        m_stereoMatcher->download_disparity(m_disparity.data);
-
-    }else{
-#else
-    //rectify images
-    cv::Mat imLeftGreyUndistortedRectified,imRightGreyUndistortedRectified;
-    cv::remap(imLeftGrey,imLeftGreyUndistortedRectified,m_xLeftRectify,m_yLeftRectify,cv::INTER_AREA);
-    cv::remap(imRightGrey,imRightGreyUndistortedRectified,m_xRightRectify,m_yRightRectify,cv::INTER_AREA);
-
-    //    cv::Ptr<cv::StereoBM> stereoBlockMatcher = cv::StereoBM::create(numDisparity);
-
-    //   stereoBlockMatcher->setMinDisparity(minDisparity);    // large (30cm) baseline and 36 pixel offset toward
-
-    /* cv::Ptr<cv::StereoSGBM> stereoBlockMatcher = cv::StereoSGBM::create(1,    //int minDisparity
-                                                          192,     //int numDisparities
-                                                          5,      //int SADWindowSize
-                                                          600,    //int P1 = 0
-                                                          2400,   //int P2 = 0
-                                                          10,     //int disp12MaxDiff = 0
-                                                          4,     //int preFilterCap = 0
-                                                          1,      //int uniquenessRatio = 0
-                                                          150,    //int speckleWindowSize = 0
-                                                          2,     //int speckleRange = 0
-                                                          true);  //bool fullDP = false
-
-*/
-
-
-    int SADWindowSize =11;
-    cv::Ptr<cv::StereoSGBM> stereoBlockMatcher = cv::StereoSGBM::create(minDisparity,    //int minDisparity
-                                                                        numDisparity,     //int numDisparities
-                                                                        SADWindowSize,      //int SADWindowSize
-                                                                        8*SADWindowSize*SADWindowSize,    //int P1 = 0
-                                                                        32*SADWindowSize*SADWindowSize,   //int P2 = 0
-                                                                        1,     //int disp12MaxDiff = 0
-                                                                        61,     //int preFilterCap = 0
-                                                                        8,      //int uniquenessRatio = 0
-                                                                        71,    //int speckleWindowSize = 0
-                                                                        1,     //int speckleRange = 0
-                                                                        false);  //bool fullDP = false
-
-    cv::Mat tmpDisparity;
-    stereoBlockMatcher->compute( imLeftGreyUndistortedRectified, imRightGreyUndistortedRectified, tmpDisparity);
-
-    //! NOTE: apparently opencv stereo::SGBM has disparity values multiplied by 16, so finnally divide by it
-
-    tmpDisparity.convertTo(m_disparity,CV_32FC1,1.0/16);
-
-
+    } else{
 #endif
+        m_cpuStereo->undistortRectify(left,right);
+        m_cpuStereo->match();
+        m_disparity = m_cpuStereo->getDisparity();
 
 
 #ifdef USE_GPU
-}
+    }
 #endif
 
-if(meas == IMAGE_MEASURE::DISPARITY){
+    if(meas == IMAGE_MEASURE::DISPARITY){
 
-    return m_disparity;
+        return m_disparity;
 
-}else{ //calculate depth and return
-
-pointcloudImage depth3DImage;
-cv::reprojectImageTo3D(  m_disparity, depth3DImage, m_disp2depthTransform, true ); //sets for invalid disparity, depth = 10000
-//extract the depth data
-
-std::vector<measureImage> channels(3);
-
-cv::split(depth3DImage, channels);
-
-//last value is depth
-return channels[2];
+    }else{ //calculate depth and return
+#ifdef USE_GPU
+        if(m_useGPU){
+            return m_gpuStereo->getDepth();
+        } else{
+#endif
+            return m_cpuStereo->getDepth();
 
 
+#ifdef USE_GPU
+        }
+#endif
+    }
 }
 
 
-             }
 
-
-
-zedCamera::measureImage zedCamera::getImageNormalize(const IMAGE_MEASURE meas,const  int minDisparity,const  int numDisparity,
-                                                     const float scale_min, const float scale_max){
+measureImage zedCamera::getImageNormalize(const IMAGE_MEASURE meas,const  int minDisparity,const  int numDisparity,
+                                          const float scale_min, const float scale_max){
 
 
 
@@ -468,10 +416,13 @@ int zedCamera::getFPS()const{
 
 
 
-zedCamera::pointcloudImage zedCamera::getPointCloudImage()const{
-    pointcloudImage depth3DImage;
-    cv::reprojectImageTo3D(  m_disparity, depth3DImage, m_disp2depthTransform, true ); //sets for invalid disparity, depth = 10000
-    return depth3DImage;
+pointcloudImage zedCamera::getPointCloudImage() {
+#ifdef USE_GPU
+    return m_gpuStereo->getPointCloudImage();
+#else
+    return m_cpuStereo->getPointCloudImage();
+#endif
+
 }
 
 void zedCamera::calibrate(std::string path2outCalibFile){
@@ -493,8 +444,8 @@ std::string zedCamera::printError(ERRORCODE er) {
     case ERRORCODE::CAM_OPEN_FAILED:
         msg = "Camera open failed";
         std::cout << msg << std::endl;
-        std::exit(EXIT_FAILURE);
-        break;
+        throw std::runtime_error("Check hardware connections, maybe camera not detected by OS");
+
 
     case ERRORCODE::INVALID_FPS:
         msg = "Input fps is invalid, must be 15, 30, 60 or 100" ;
@@ -516,9 +467,6 @@ std::string zedCamera::printError(ERRORCODE er) {
         msg =  "Multiple errors occured" ;
         break;
 
-    default:
-        msg =  "Unknown error";
-        break;
     }
 
 
@@ -538,10 +486,11 @@ void zedCamera::resetDefault(){
     //default fps is 30
     m_cam.set(CV_CAP_PROP_FPS, 30);
 
+
     //recollect the fps and resolution from the camera
-    m_height = m_cam.get(CV_CAP_PROP_FRAME_HEIGHT);
-    m_width = m_cam.get(CV_CAP_PROP_FRAME_WIDTH)/2;
-    m_fps = m_cam.get(CV_CAP_PROP_FPS);
+    m_height = static_cast<int>(m_cam.get(CV_CAP_PROP_FRAME_HEIGHT));
+    m_width = static_cast<int>(m_cam.get(CV_CAP_PROP_FRAME_WIDTH)/2);
+    m_fps = static_cast<int>(m_cam.get(CV_CAP_PROP_FPS));
 
 
 }
@@ -570,7 +519,7 @@ cv::Mat zedCamera::getRadialDistCoeffs(SIDE side)const{
 
 
 float zedCamera::getBaselineCM()const{
-    return m_baselineCM;
+    return m_baseline*10;
 }
 
 
@@ -633,8 +582,9 @@ zedCamera::ERRORCODE zedCamera::loadCalibrationData(std::string path2Calibration
 
     //load stereo calibration data
     successFlag &=   calibFile.getValue("STEREO/Baseline",&val);
-    m_T.at<double>(0,0) = -val/1000.0;// in meters
-    m_baselineCM = val/10.0f;
+    m_baseline = -val/1000.0f;// in meters
+    m_T.at<double>(0,0) = m_baseline;
+
     float rx,ry,rz;
 
 
@@ -682,9 +632,6 @@ std::string zedCamera::resolution2String(RESOLUTION res){
         resStr = "2K";
         break;
 
-    default:
-        resStr = "";
-
     }
 
     return resStr;
@@ -693,7 +640,7 @@ std::string zedCamera::resolution2String(RESOLUTION res){
 
 
 
-void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string format)const{
+void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string format){
 
     if(binFlag){ //open file as binary
 
@@ -716,7 +663,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
         const float* ptPtr = pcIm.ptr<float>(r);
         for(int c = 0; c< pcIm.cols; c++){
 
-            if((int) ptPtr[3*c+2] == 10000)
+            if(static_cast<int>(ptPtr[3*c+2]) == INVALID_DEPTH)
                 invalidPts++;
 
         }
@@ -751,7 +698,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
                 const uchar* colorPtr = rectLeft.ptr<uchar>(r);
                 for(int c = 0; c< pcIm.cols; c++){
 
-                    if((int) ptPtr[3*c+2] == 10000)
+                    if(static_cast<int>(ptPtr[3*c+2]) == INVALID_DEPTH)
                         continue;
                     float x  =  ptPtr[3*c];
                     float y  =  ptPtr[3*c+1];
@@ -782,7 +729,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
                 const float* ptPtr = pcIm.ptr<float>(r);
 
                 for(int c = 0; c< pcIm.cols; c++){
-                    if((int) ptPtr[3*c+2] == 10000)
+                    if(static_cast<int>(ptPtr[3*c+2]) == INVALID_DEPTH)
                         continue;
 
                     outFile << ptPtr[3*c] <<" " << ptPtr[3*c+1] <<" " << ptPtr[3*c+2] <<std::endl;
@@ -818,7 +765,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
                 const uchar* colorPtr = rectLeft.ptr<uchar>(r);
                 for(int c = 0; c< pcIm.cols; c++){
 
-                    if((int) ptPtr[3*c+2] == 10000)
+                    if(static_cast<int>(ptPtr[3*c+2]) == INVALID_DEPTH)
                         continue;
 
                     unsigned int r = colorPtr[3*c+2];
@@ -835,7 +782,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
         }
         else throw std::runtime_error("failed to create file at " + fname);
 
-    }    else throw std::runtime_error("Unkown pointcloud format: " + format);
+    }    else throw std::runtime_error("Unknown pointcloud format: " + format);
 
 
 

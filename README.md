@@ -12,5 +12,7 @@ src/a.conf is an example calibration file which comes with the zed camera
 To use it,  open a terminal 
 git clone https://github.com/unc-v3d/openZed.git  \
 cd openZed \
-cmake . \
-make 
+mkdir build \
+cd build \
+cmake .. \
+make install

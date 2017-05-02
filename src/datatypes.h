@@ -29,65 +29,29 @@
 //OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 //OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include"zedCamera.h"
-#include"planedetection.h"
+//file created for simple api for zed camera without using the zed sdk
+#ifndef DATATYPESZED_H
+#define DATATYPESZED_H
+#include<opencv2/opencv.hpp>
+#define FLOAT_EPSILON 0.000001
+#define INVALID_DEPTH 10000
+//#define USE_GPU 1
+namespace nfs{
+
+
+/*! \namespace vision
+ *  \brief This library was developed for autonomous car,  this namespace takes care of the vision part of autonomous car
+ *
+ */
+namespace vision{
+
+using measureType = float;
+using pointcloudImage = cv::Mat_<cv::Vec3f>;
+using measureImage = cv::Mat_<measureType>;// generic image to support both depth and disparity images
+using colorImage   = cv::Mat_<cv::Vec<uchar,3> >;
+using lookupMap   = cv::Mat_<float>;
 
 
 
-int main(int argc, char** argv){
-
-    if(argc <3){
-		std::cout<<"program, path2camera, abs height of camera above ground in meters"<<std::endl;
-		std::cout<<"eg: zedCameraApp /dev/video0 0.5"<<std::endl;
-		return -1;
-	}
- 
-std::string camName(argv[1]); 
-std::string calibFilePath(argv[2]); 
-float dist;
-sscanf(argv[3],"%f",&dist);
-
-std::cout<<"Using camera at "<< camName<<std::endl;
-std::cout<<"Using calibration file at "<<calibFilePath<<std::endl;
-
-nfs::vision::zedCamera zcam(camName,calibFilePath,nfs::vision::zedCamera::RESOLUTION::HD, 30,true,true);
-
-
-
-nfs::vision::zedCamera::printError(zcam.init());
-bool validIm = true;
-	char keypress = 'r';
- 
-
-
-
-
-cv::Mat K = zcam.getRectifiedIntrinsicMatrix(nfs::vision::zedCamera::SIDE::LEFT);
-
-	while(keypress != 'q' && validIm){
-			validIm = zcam.step();
-		
-if(validIm){	
-cv::Mat mask;
-    cv::Mat disparityImage  =  zcam.getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
-
-cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.1f , true, 0.8f);
-
-
-std::cout << " Plane eqn is : "<< plane << std::endl;
-cv::Mat disp;
-
-
-    disparityImage.convertTo(disp, CV_8UC1,0.25);
-		cv::imshow("Disparity", disp);
-        cv::imshow("Mask", mask);
-        keypress = static_cast<char>(cv::waitKey(1));
-
-        if(keypress == 's'){
-            zcam.savePointcloud("pc",true,"PLY");//zcam.savePointcloud("pc",true,"PCD");
-        }
-
-	}
-}
- 
-}
+}}
+#endif //DATATYPESZED_H
