@@ -8,11 +8,15 @@ This GPU code requires cudaArray (https://github.com/trueprice/cudaArray). This 
 
 This code has been tested under ubuntu
 
+If you are using your own GPU stereo code, use the interface defined in src/stereo/stereointerface.h
+
 src/a.conf is an example calibration file which comes with the zed camera
+
 To use it,  open a terminal 
 git clone https://github.com/unc-v3d/openZed.git  \
 cd openZed \
 mkdir build \
 cd build \
 cmake .. \
+make \
 make install
