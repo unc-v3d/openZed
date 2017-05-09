@@ -72,6 +72,8 @@ void cudaArrayBM::loadOptions(const std::string path2File){
 
 
      m_stereoBlockMatcher = new ext_stereo::StereoMatcher(options);
+     m_depth = cv::Mat::zeros(m_params.height,m_params.width, CV_32FC1);
+     m_disparity = cv::Mat::zeros(m_params.height,m_params.width, CV_32FC1);
 
 }
 
@@ -146,12 +148,11 @@ measureImage cudaArrayBM::getDisparity(){
 
 measureImage cudaArrayBM::getDepth(){
     //!\todo Akash:not using GPU, convert it
-    measureImage depth = cv::Mat::zeros(m_disparity.rows,m_disparity.cols, CV_32FC1);
-    const float fb = m_params.focalLength * m_params.focalLength;
+     const float fb = m_params.focalLength * m_params.focalLength;
     for(  int r  = 0; r <m_disparity.rows; r++){
 
         const float* dataPtr = m_disparity.ptr<measureType>(r);
-        float* depthPtr = depth.ptr<measureType>(r);
+        float* depthPtr = m_depth.ptr<measureType>(r);
 
         for(  int c  = 0; c <m_disparity.cols; c++){
 
@@ -164,12 +165,14 @@ measureImage cudaArrayBM::getDepth(){
             depthPtr[c] = fb/disparityValue;
         }
     }
-    return depth;
+    return m_depth;
 }
 
 pointcloudImage cudaArrayBM::getPointCloudImage(){
     //!\todo Akash:not using GPU, convert it
     pointcloudImage depth3DImage;
+  std::cout<<"Size of pointcloud map is inside gpu code "<< m_disparity.rows << " "  << m_disparity.cols<< std::endl;
+
     cv::reprojectImageTo3D(  m_disparity, depth3DImage, m_params.disparity2depth, true ); //sets for invalid disparity, depth = 10000
     return depth3DImage;
 }

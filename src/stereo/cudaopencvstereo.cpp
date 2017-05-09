@@ -87,6 +87,7 @@ void opencvStereoGPU::loadOptions(const std::string path2File) {
 
    m_filter = cv::cuda::createDisparityBilateralFilter(numDisparity,15,10); //5 = filter size
 
+   m_depth = cv::Mat::zeros(m_params.height,m_params.width, CV_32FC1);
 
 
 //median filtering to denoise disparity image, then applying a bilateral filter to smooth
@@ -205,16 +206,16 @@ measureImage opencvStereoGPU::getDepth(){
     depthGPU.download(tmpDepth);
 
 
-    measureImage cpuDepth;
-    tmpDepth.convertTo(cpuDepth, CV_32FC1);
+
+    tmpDepth.convertTo(m_depth, CV_32FC1);
 
 
-    for(  int r  = 0; r <cpuDepth.rows; r++){
+    for(  int r  = 0; r <m_depth.rows; r++){
 
-        float* depthPtr = cpuDepth.ptr<measureType>(r);
+        float* depthPtr = m_depth.ptr<measureType>(r);
 
 
-        for(  int c  = 0; c <cpuDepth.cols; c++){
+        for(  int c  = 0; c <m_depth.cols; c++){
 
             measureType depth = depthPtr[c];
 
@@ -228,7 +229,7 @@ measureImage opencvStereoGPU::getDepth(){
 
 
 
-    return cpuDepth;
+    return m_depth;
 }
 
 pointcloudImage opencvStereoGPU::getPointCloudImage(){

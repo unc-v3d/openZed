@@ -80,6 +80,8 @@ void opencvStereo::loadOptions(const std::string path2File){
                                                   false);  //bool fullDP = false
 
 
+    m_depth = cv::Mat::zeros(m_params.height,m_params.width, CV_32FC1);
+
 }
 
 void opencvStereo::initUndistortRectify(const lookupMap xLeftMap, const lookupMap yLeftMap,const lookupMap xRightMap,const lookupMap yRightMap){
@@ -138,12 +140,12 @@ measureImage opencvStereo::getDisparity(){
 
 measureImage opencvStereo::getDepth(){
 
-    measureImage depth = cv::Mat::zeros(m_disparity.rows,m_disparity.cols, CV_32FC1);
+
     const float fb = m_params.focalLength * m_params.focalLength;
     for(  int r  = 0; r <m_disparity.rows; r++){
 
         const float* dataPtr = m_disparity.ptr<measureType>(r);
-        float* depthPtr = depth.ptr<measureType>(r);
+        float* depthPtr = m_depth.ptr<measureType>(r);
 
         for(  int c  = 0; c <m_disparity.cols; c++){
 
@@ -156,12 +158,14 @@ measureImage opencvStereo::getDepth(){
             depthPtr[c] = fb/disparityValue;
         }
     }
-    return depth;
+      
+    return m_depth;
 }
 
 pointcloudImage opencvStereo::getPointCloudImage(){
 
     pointcloudImage depth3DImage;
+ 
     cv::reprojectImageTo3D(  m_disparity, depth3DImage, m_params.disparity2depth, true ); //sets for invalid disparity, depth = 10000
     return depth3DImage;
 }

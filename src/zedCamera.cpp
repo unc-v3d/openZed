@@ -42,8 +42,8 @@
 
 
 #ifdef USE_GPU
-#include"stereo/cudaArrayBM.h"
-//#include "stereo/cudaopencvstereo.h"
+//#include"stereo/cudaArrayBM.h"
+#include "stereo/cudaopencvstereo.h"
 #endif
 
 
@@ -235,8 +235,8 @@ zedCamera::ERRORCODE zedCamera::init(){
             if(!params.disparity2depth.isContinuous()){
                 params.disparity2depth = params.disparity2depth.clone();
             }
-            m_gpuStereo = new cudaArrayBM(params);
-           // m_gpuStereo = new opencvStereoGPU(params,opencvStereoGPU::METHOD::BLOCK_MATCHING,0, true);
+            //m_gpuStereo = new cudaArrayBM(params);
+            m_gpuStereo = new opencvStereoGPU(params,opencvStereoGPU::METHOD::BLOCK_MATCHING,0, true);
             m_gpuStereo->loadOptions("");
             m_gpuStereo->initUndistortRectify(m_xLeftRectify,m_yLeftRectify,m_xRightRectify,m_yRightRectify);
 
@@ -365,7 +365,6 @@ measureImage zedCamera::getImage(const IMAGE_MEASURE meas, const int minDisparit
 #endif
             return m_cpuStereo->getDepth();
 
-
 #ifdef USE_GPU
         }
 #endif
@@ -417,12 +416,21 @@ int zedCamera::getFPS()const{
 
 
 pointcloudImage zedCamera::getPointCloudImage() {
-#ifdef USE_GPU
-    return m_gpuStereo->getPointCloudImage();
-#else
-    return m_cpuStereo->getPointCloudImage();
-#endif
 
+#ifdef USE_GPU
+    if(m_useGPU){
+        return m_gpuStereo->getPointCloudImage();
+ std::cout<<"Size of pointcloud map is inside zed code1 "<< std::endl;
+    } else{
+#endif
+ std::cout<<"Size of pointcloud map is inside zed code "<< std::endl;
+    return m_cpuStereo->getPointCloudImage();
+
+ std::cout<<"Size of pointcloud map is inside zed out "<< std::endl;
+#ifdef USE_GPU
+        }
+
+#endif
 }
 
 void zedCamera::calibrate(std::string path2outCalibFile){
@@ -651,7 +659,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
     colorImage rectLeft;
 
     cv::remap(left,rectLeft,m_xLeftRectify,m_yLeftRectify,cv::INTER_AREA);
-    pointcloudImage pcIm = zedCamera::getPointCloudImage();
+    pointcloudImage pcIm = getPointCloudImage();
 
 
 
@@ -660,7 +668,7 @@ void zedCamera::savePointcloud(std::string fname,bool binFlag, std::string forma
 
     int invalidPts = 0;
     for(int r = 0; r < pcIm.rows; r++){
-        const float* ptPtr = pcIm.ptr<float>(r);
+        const measureType* ptPtr = pcIm.ptr<measureType>(r);
         for(int c = 0; c< pcIm.cols; c++){
 
             if(static_cast<int>(ptPtr[3*c+2]) == INVALID_DEPTH)

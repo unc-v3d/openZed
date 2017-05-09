@@ -82,6 +82,7 @@ public:
     //   virtual colorImage d_getOriginalImage(const bool isLeft) = 0; //typically used for debugging GPU code
 protected:
     measureImage m_disparity;
+    measureImage m_depth;//container to store depth, disparoty is always consistent with step
     lookupMap m_xLeftMap;
     lookupMap m_yLeftMap;
 
