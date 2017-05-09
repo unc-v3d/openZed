@@ -36,6 +36,7 @@ set(OPENCV_CUDA_LIBRARIES
 	opencv_cudastereo 
 	opencv_cudaimgproc
 	opencv_cudawarping
+	opencv_cudaarithm
 	PARENT_SCOPE
 )
 
