@@ -37,8 +37,8 @@
 int main(int argc, char** argv){
 
     if(argc <3){
-		std::cout<<"program, path2camera, abs height of camera above ground in meters"<<std::endl;
-		std::cout<<"eg: zedCameraApp /dev/video0 0.5"<<std::endl;
+		std::cout<<"program, path2camera,path2calibration file, abs height of camera above ground in meters"<<std::endl;
+		std::cout<<"eg: zedCameraApp /dev/video0 ~/SN0000.conf 0.5"<<std::endl;
 		return -1;
 	}
  
@@ -67,27 +67,27 @@ cv::Mat K = zcam.getRectifiedIntrinsicMatrix(nfs::vision::zedCamera::SIDE::LEFT)
 	while(keypress != 'q' && validIm){
 			validIm = zcam.step();
 		
-if(validIm){	
-cv::Mat mask;
-    cv::Mat disparityImage  =  zcam.getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
+		if(validIm){	
+			cv::Mat mask;
+			cv::Mat disparityImage  =  zcam.getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
 
-cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.1f , true, 0.8f);
-
-
-std::cout << " Plane eqn is : "<< plane << std::endl;
-cv::Mat disp;
+			cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.1f , true, 0.8f);
 
 
-    disparityImage.convertTo(disp, CV_8UC1,0.25);
-		cv::imshow("Disparity", disp);
-        cv::imshow("Mask", mask);
-        keypress = static_cast<char>(cv::waitKey(1));
+			std::cout << " Plane eqn is : "<< plane << std::endl;
+			cv::Mat disp;
 
-        if(keypress == 's'){
-            zcam.savePointcloud("pc",true,"PLY");//zcam.savePointcloud("pc",true,"PCD");
-        }
 
+			disparityImage.convertTo(disp, CV_8UC1,0.25);
+			cv::imshow("Disparity", disp);
+			cv::imshow("Mask", mask);
+			keypress = static_cast<char>(cv::waitKey(1));
+
+			if(keypress == 's'){
+			    zcam.savePointcloud("pc",true,"PLY");//zcam.savePointcloud("pc",true,"PCD");
+			}
+
+		}
 	}
-}
  
 }

@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.1)
 
 project(openZedAPI)
 
+#install path, comment if you are using your own path
+set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
+
 ################################################################################
 # Include CMake dependencies
 ################################################################################
@@ -75,11 +78,8 @@ if(DOXYGEN_FOUND)
 configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_SOURCE_DIR}/Doxyfile @ONLY)
 add_custom_target(doc ALL COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 COMMENT "Generating API documentation with Doxygen" VERBATIM)
-
-
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
+#install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION share/doc)
 #install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/latex DESTINATION share/doc)
-
 endif(DOXYGEN_FOUND)
 
 ################################################################################
@@ -101,7 +101,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 ################################################################################
 
 add_subdirectory(src)
-#install path
-SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
+
 
 

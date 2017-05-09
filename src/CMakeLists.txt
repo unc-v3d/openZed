@@ -59,6 +59,16 @@ target_link_libraries(openzed
 ################################################################################
 # INSTALL
 ################################################################################
+
+#added this line for people who havent installed the libraries in /usr/local/lib and dont want to update LD_LIBRARY_PATH
+set_target_properties(zedCameraApp PROPERTIES INSTALL_RPATH ${CMAKE_INSTALL_PREFIX}/lib)
+set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 install(TARGETS zedCameraApp DESTINATION bin/) 
 install(TARGETS openzed DESTINATION lib/)
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/zedCamera.h ${CMAKE_CURRENT_SOURCE_DIR}/planedetection.h DESTINATION include/)
+
+if(DOXYGEN_FOUND) 
+install(DIRECTORY ${CMAKE_BINARY_DIR}/html DESTINATION share/doc)
+endif(DOXYGEN_FOUND)
+

@@ -46,7 +46,11 @@ if(${WITH_cudaArrayBM})
 	cuda_add_library(cudaArrayBMLib SHARED cudaArrayBM/StereoMatcher.h cudaArrayBM/StereoMatcher.cu)
 
 	add_dependencies(cudaArrayBMLib cudaArray)
-
+	
+	if(DOXYGEN_FOUND) 
+		add_dependencies(doc cudaArray) #adding dependency for doc so that proper documentation is generated
+	endif(DOXYGEN_FOUND)
+	
  	set(CUDA_EXT_STEREO_LIBRARIES ${CUDA_EXT_STEREO_LIBRARIES} ${GLOG_LIBRARIES} cudaArrayBMLib PARENT_SCOPE)#
  
 	set(CUDA_EXT_STEREO_SOURCE ${CUDA_EXT_STEREO_SOURCE} ${CMAKE_CURRENT_SOURCE_DIR}/cudaArrayBM.cpp
