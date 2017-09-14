@@ -28,9 +28,9 @@
 //CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 //OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 //OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#include "planedetection.h"
 #include <exception>
 #include<random>
+#include "planedetection.h"
 namespace nfs{ namespace vision{
 
 cv::Scalar planeDetectBasic::detect(zedCamera::measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
@@ -142,6 +142,130 @@ unsigned int planeDetectBasic::evalFitPlane(cv::Mat model, cv::Mat data, cv::Mat
 
     return static_cast<unsigned int>(cv::countNonZero(supportIdx));
 }
+
+
+
+
+
+std::vector<cv::Point3d> filterPointCloud::filterLIDARLike(zedCamera::measureImage const &  depthMap, const cv::Mat intrinsicMatrix,cv::Scalar groundPlaneEqn,
+                                                           const float metersAbovePlane, const float tolerance){
+
+
+
+    std::vector<cv::Point3d> pts;
+    cv::Point3d normal(groundPlaneEqn[0],groundPlaneEqn[1],groundPlaneEqn[2]);
+    const double divideNorm = cv::norm(normal);
+    cv::Scalar  newPlane = groundPlaneEqn/divideNorm + cv::Scalar(0,0,0,-metersAbovePlane);
+
+    const double fx = intrinsicMatrix.at<double>(0,0);
+    const double fy = intrinsicMatrix.at<double>(1,1);
+
+    const double cx = intrinsicMatrix.at<double>(0,2);
+    const double cy = intrinsicMatrix.at<double>(1,2);
+
+
+    for(int r = 0; r < depthMap.rows; r++){
+        float const*  depthPtr = depthMap.ptr<float>(r);
+
+        for( int c = 0; c < depthMap.cols; c++ ){
+            //z is in meters
+            float z = depthPtr[c];
+
+            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - 10000)  <  FLOAT_EPSILON ) // invalid depth flag for opencv
+                continue;
+
+
+            float  y = (r-cy)*z/fy;
+            float x = (c-cx)*z/fx;
+
+
+            if(  std::abs(newPlane[0]*x + newPlane[1]*y + newPlane[2]*z + newPlane[3]) < tolerance ){
+                pts.push_back(cv::Point3d(x,y,z));
+
+            }
+
+        }
+    }
+    return pts;
+
+
+}
+
+
+
+
+cv::Mat filterPointCloud::transformPointCloud(std::vector<cv::Point3d> pointcloud,cv::Mat transform){
+    assert(transform.cols == 4 && transform.rows == 4); // transform must be 4x4 matrix
+
+    //assumes
+
+
+    cv::Mat ptsMat = cv::Mat(pointcloud).reshape(1); // changes the number of channels into column
+    cv::Mat homoPtsMat;
+    cv::Mat oneVec = cv::Mat::zeros(ptsMat.rows,1, CV_64FC1) + 1;
+
+    cv::hconcat(ptsMat, oneVec, homoPtsMat);
+
+    cv::Mat homoTransformedPts = homoPtsMat *transform;
+
+
+    cv::Mat transformedPts;
+    homoTransformedPts(cv::Rect2i(0,0,3,homoTransformedPts.rows)).copyTo(transformedPts);
+
+
+    return transformedPts;
+
+
+}
+
+
+
+cv::Mat filterPointCloud::topView(std::vector<cv::Point3d> pointcloud,cv::Scalar const& groundPlaneEqn,const float heightFromGroundPlane){
+    //construct transform to get a top view where (x,y,z) -> up, right, forward
+    //height is height from the origin of the original system
+
+
+    cv::Point3d normal(groundPlaneEqn[0],groundPlaneEqn[1],groundPlaneEqn[2]);
+    const double divideNorm = cv::norm(normal);
+
+    normal = normal/divideNorm; //normal  is -z in new
+    cv::Point3d newZ = -normal;
+    cv::Point3d newX =  cv::Point3d(0,0,1);
+    cv::Point3d newY =  newX.cross(newZ);
+    newY = newY/ cv::norm(newY);
+
+    newX = newY.cross(newZ);
+    newX = newX/cv::norm(newX);
+
+    //build transform
+    cv::Mat t = cv::Mat::zeros(3,1,CV_64FC1);
+    t.at<double>(2) = -heightFromGroundPlane;
+
+    // see https://www.fastgraph.com/makegames/3drotation/
+    //    The rows of R represent the coordinates in the original space of unit vectors along the coordinate axes of the rotated space. (Figure 1).
+    //    The columns of R represent the coordinates in the rotated space of unit vectors along the axes of the original space
+    // new{X,Y,Z} are orientation of unit vectors of rotatied space in original space
+
+    double array[9] = { newX.x,newX.y,newX.z,
+                       newY.x,newY.y,newY.z,
+                       newZ.x,newZ.y,newZ.z};
+
+    cv::Mat rot = cv::Mat(3, 3, CV_64F, array);
+
+    t= rot*t;
+
+    cv::Mat transform =cv::Mat::zeros(4, 4, CV_64F);
+
+    rot.copyTo(transform(cv::Rect(0,0,3,3)));
+    t.copyTo(transform(cv::Rect(3,0,1,3)));
+
+    transform.at<double>(3,3) = 1;
+
+    //transform the pointcloud
+
+  return  filterPointCloud::transformPointCloud( pointcloud, transform);
+}
+
 
 
 

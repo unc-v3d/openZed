@@ -100,6 +100,16 @@ private:
 
 
 
+class filterPointCloud{
+public:
+    static  std::vector<cv::Point3d> filterLIDARLike(zedCamera::measureImage const &  depthMap, const cv::Mat intrinsicMatrix,cv::Scalar groundPlaneEqn,
+                                                     const float metersAbovePlane, const float tolerance);
+
+    static cv::Mat transformPointCloud(std::vector<cv::Point3d> pointcloud,cv::Mat transform);
+    static cv::Mat topView(std::vector<cv::Point3d> pointcloud, const cv::Scalar &groundPlaneEqn, const float heightFromGroundPlane);
+
+};
+
 
 /*!
  * \brief The RANSAC class generic class to apply RANSAC for robust fitting of model. It uses mathematically correct number of iterations, given the inlierProbability.

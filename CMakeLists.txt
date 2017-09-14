@@ -77,6 +77,6 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} \
 add_subdirectory(src)
 #add_subdirectory(src/cudaArray)
 #install path
-#SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
+SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
 
 
