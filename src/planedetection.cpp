@@ -33,8 +33,7 @@
 #include "planedetection.h"
 namespace nfs{ namespace vision{
 
-cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
-                                    const float camHtInMeters, cv::Mat& maskImage, const float tolerance , bool useRANSAC, const float inlierProbability){
+cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const intrinsicMatrix, const float camHtInMeters, cv::Mat& maskImage, const float tolerance , bool useRANSAC, const float inlierProbability){
 
     cv::Scalar plane = cv::Scalar(0,0,0,0);
     cv::Mat model ;
@@ -81,17 +80,16 @@ cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const
 }
 
 
-std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
-                                                        const float camHtInMeters, cv::Mat& maskImage, const float tolerance ){
+std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  depthMap,const cv::Mat intrinsicMatrix, const float camHtInMeters, cv::Mat& maskImage, const float tolerance ){
     maskImage = cv::Mat::zeros(depthMap.rows,depthMap.cols,CV_8UC1);
 
     std::vector<cv::Point3d> pts;
 
-    const float fx = static_cast<float>(intrinsicMatrix.at<double>(0,0));
-    const float fy = static_cast<float>(intrinsicMatrix.at<double>(1,1));
+    const double fx = intrinsicMatrix.at<double>(0,0);
+    const double fy = intrinsicMatrix.at<double>(1,1);
 
-    const float cx = static_cast<float>(intrinsicMatrix.at<double>(0,2));
-    const float cy = static_cast<float>(intrinsicMatrix.at<double>(1,2));
+    const double cx = intrinsicMatrix.at<double>(0,2);
+    const double cy = intrinsicMatrix.at<double>(1,2);
 
     // In 3D $aX + bY + cZ +d = 0$
 
@@ -104,9 +102,9 @@ std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  de
             //z is in meters
             float z = depthPtr[c];
 
-            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - INVALID_DEPTH)  <  FLOAT_EPSILON ) // invalid depth flag for opencv
+            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - INVALID_DEPTH)  <  FLOAT_EPSILON ){ // invalid depth flag for opencv
                 continue;
-
+}
 
             float  y = (r-cy)*z/fy;
             float x = (c-cx)*z/fx;
@@ -114,13 +112,17 @@ std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  de
             //         if( ((camHtInMeters - tolerance)* fy/ z + cy < r &&  (camHtInMeters + tolerance)* fy/ z + cy > r ) ||  (r > 500 && r < 600) ){
 
             //check for  zero z
-            if(  y > (camHtInMeters - tolerance) && y < (camHtInMeters + tolerance) ){
+
+if(  y > (camHtInMeters - tolerance) && y < (camHtInMeters + tolerance) )
+{
+//std::cout <<cv::Point3d(x,y,z) << ::std::endl;
                 pts.push_back(cv::Point3d(x,y,z));
                 maskPtr[c] = 255;
             }
 
         }
     }
+
     return pts;
 }
 
@@ -144,11 +146,9 @@ unsigned int planeDetectBasic::evalFitPlane(cv::Mat model, cv::Mat data, cv::Mat
 }
 
 
-
-
-
-std::vector<cv::Point3d> filterPointCloud::filterLIDARLike(zedCamera::measureImage const &  depthMap, const cv::Mat intrinsicMatrix,cv::Scalar groundPlaneEqn,
-                                                           const float metersAbovePlane, const float tolerance){
+ 
+std::vector<cv::Point3d> filterPointCloud::filterLIDARLike(measureImage const &  depthMap, const cv::Mat intrinsicMatrix, const cv::Scalar& groundPlaneEqn,
+const float metersAbovePlane, const float tolerance){
 
 
 

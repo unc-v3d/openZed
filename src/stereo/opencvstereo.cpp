@@ -140,8 +140,7 @@ measureImage opencvStereo::getDisparity(){
 
 measureImage opencvStereo::getDepth(){
 
-
-    const float fb = m_params.focalLength * m_params.focalLength;
+    const float fb = m_params.focalLength * m_params.baseline;
     for(  int r  = 0; r <m_disparity.rows; r++){
 
         const float* dataPtr = m_disparity.ptr<measureType>(r);

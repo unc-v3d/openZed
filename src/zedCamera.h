@@ -35,7 +35,6 @@
 #include"datatypes.h"
 #include<opencv2/opencv.hpp>
 #include "confParser.h"
-#define USE_GPU 1
 #include "stereo/opencvstereo.h"
 
 /*! \namespace nfs

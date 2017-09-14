@@ -208,8 +208,8 @@ zedCamera::ERRORCODE zedCamera::init(){
 
 
         stereoMatcherInterface::stereoParams params;
-        params.baseline = m_baseline;
-        params.focalLength = static_cast<float>(m_radDistLeft.at<double>(0,0));
+        params.baseline =  m_baseline ;
+        params.focalLength = static_cast<float>(m_KLeft.at<double>(0,0));
         params.disparity2depth  = m_disp2depthTransform;
         params.width = m_width;
         params.height = m_height;
@@ -298,17 +298,17 @@ colorImage zedCamera::getImage(const SIDE side,const IMAGE imageType){
             if(side == SIDE::LEFT){
 #ifdef USE_GPU
 
-                m_gpuStereo->undistortRectify(rawColorImage,true);
+     retImage = m_gpuStereo->undistortRectify(rawColorImage,true);
 #else
-                m_cpuStereo->undistortRectify(rawColorImage,true);
+     retImage = m_cpuStereo->undistortRectify(rawColorImage,true);
 #endif
 
             } else{
 #ifdef USE_GPU
 
-                m_gpuStereo->undistortRectify(rawColorImage,false);
+     retImage = m_gpuStereo->undistortRectify(rawColorImage,false);
 #else
-                m_cpuStereo->undistortRectify(rawColorImage,false);
+     retImage = m_cpuStereo->undistortRectify(rawColorImage,false);
 #endif
             }
 
@@ -590,8 +590,8 @@ zedCamera::ERRORCODE zedCamera::loadCalibrationData(std::string path2Calibration
 
     //load stereo calibration data
     successFlag &=   calibFile.getValue("STEREO/Baseline",&val);
-    m_baseline = -val/1000.0f;// in meters
-    m_T.at<double>(0,0) = m_baseline;
+    m_baseline =  val/1000.0f;// in meters
+    m_T.at<double>(0,0) = -m_baseline;
 
     float rx,ry,rz;
 

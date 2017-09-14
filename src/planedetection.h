@@ -102,11 +102,10 @@ private:
 
 class filterPointCloud{
 public:
-    static  std::vector<cv::Point3d> filterLIDARLike(zedCamera::measureImage const &  depthMap, const cv::Mat intrinsicMatrix,cv::Scalar groundPlaneEqn,
-                                                     const float metersAbovePlane, const float tolerance);
+    static  std::vector<cv::Point3d> filterLIDARLike(measureImage const &  depthMap, const cv::Mat intrinsicMatrix, const cv::Scalar& groundPlaneEqn, const float metersAbovePlane, const float tolerance);
 
     static cv::Mat transformPointCloud(std::vector<cv::Point3d> pointcloud,cv::Mat transform);
-    static cv::Mat topView(std::vector<cv::Point3d> pointcloud, const cv::Scalar &groundPlaneEqn, const float heightFromGroundPlane);
+    static cv::Mat topView(std::vector<cv::Point3d> pointcloud, const cv::Scalar & groundPlaneEqn, const float heightFromGroundPlane);
 
 };
 
