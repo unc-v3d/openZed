@@ -40,7 +40,7 @@
 #include "cuda_runtime.h"
 
 #include "cudaArray/cudaArray/cudaArray_fwd.h"
-
+namespace ext_stereo{
 class StereoMatcher {
  public:
   class StereoMatcherImpl;
@@ -81,5 +81,5 @@ void download_origImage2(void *image) const;
   Options options_;
   std::unique_ptr<StereoMatcherImpl> impl_;
 };
-
+}
 #endif // STEREO_MATCHER_H_

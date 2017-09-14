@@ -32,26 +32,21 @@
 //file created for simple api for zed camera without using the zed sdk
 #ifndef ZEDCAMMERA_H
 #define ZEDCAMMERA_H
+#include"datatypes.h"
 #include<opencv2/opencv.hpp>
 #include "confParser.h"
-#define FLOAT_EPSILON 0.00000001
-//#define USE_GPU
-#ifdef USE_GPU
-#include<cuda.h>
-#include"StereoMatcher.h"
-#endif
-
-
+#define USE_GPU 1
+#include "stereo/opencvstereo.h"
 
 /*! \namespace nfs
- *  \brief This library was developed for autonomus car, hence name nfs
+ *  \brief This library was developed for autonomous car, hence name nfs
  *
  */
 namespace nfs{
 
 
 /*! \namespace vision
- *  \brief This library was developed for autonomus car,  this namespace takes care of the vision part of autonomous car
+ *  \brief This library was developed for autonomous car,  this namespace takes care of the vision part of autonomous car
  *
  */
 namespace vision{
@@ -61,14 +56,6 @@ namespace vision{
  */
 class zedCamera{
 public:
-
-
-
-
-    using pointcloudImage = cv::Mat_<cv::Vec3f>;
-    using measureImage = cv::Mat_<float>;// generic image to support both depth and disparity images
-    using colorImage   = cv::Mat_<cv::Vec<uchar,3> >;
-    using lookupMap   = cv::Mat_<float>;
 
 
     /*!
@@ -260,7 +247,7 @@ public:
      * \brief getPointCloudImage returns a 3D image transforming the disparity into a x,y,z image, invalid depth is 10000
      * \return 3D pointcloud image
      */
-    pointcloudImage getPointCloudImage()const;
+    pointcloudImage getPointCloudImage();
 
     //void calibrate();
 
@@ -342,7 +329,7 @@ public:
      * \param binFlag not used currently
      * \param format pointcloudtype, current supported are PLY, PCD, XYZ (non-colored), by default PLY is saved
      */
-    void savePointcloud(std::string fname, bool binFlag, std::string format = "PLY")const;
+    void savePointcloud(std::string fname, bool binFlag, std::string format = "PLY");
 
 private:
     const std::string m_path2Calibration;
@@ -366,7 +353,7 @@ private:
     cv::Mat m_radDistRight;
     cv::Mat m_R;
     cv::Mat m_T;
-    float m_baselineCM;
+    float m_baseline;
 
     //after rectification
     cv::Mat m_rect_KLeft;
@@ -387,19 +374,14 @@ private:
 
     cv::Mat m_disp2depthTransform;
 
-    //saved maps for undistortion + rectification gpu version
-    cv::Mat m_leftMapGPU;
-    cv::Mat m_rightMapGPU;
-
-
+    stereoMatcherInterface* m_cpuStereo;
 
     ERRORCODE loadCalibrationData(std::string path2CalibrationFile);
 
     //gpu objects
 #ifdef USE_GPU
-    StereoMatcher* m_stereoMatcher;
+    stereoMatcherInterface* m_gpuStereo;
 #endif
-
 
     void construct();
     static std::string resolution2String(RESOLUTION res);

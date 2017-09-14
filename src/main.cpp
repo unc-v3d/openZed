@@ -37,14 +37,15 @@
 int main(int argc, char** argv){
 
     if(argc <3){
-        std::cout<<"program path2camera"<<std::endl;
-        return -1;
-    }
-
-    std::string camName(argv[1]);
-    std::string calibFilePath(argv[2]);
-    double dist;
-    sscanf(argv[3],"%lf",&dist);
+		std::cout<<"program, path2camera,path2calibration file, abs height of camera above ground in meters"<<std::endl;
+		std::cout<<"eg: zedCameraApp /dev/video0 ~/SN0000.conf 0.5"<<std::endl;
+		return -1;
+	}
+ 
+std::string camName(argv[1]); 
+std::string calibFilePath(argv[2]); 
+float dist;
+sscanf(argv[3],"%f",&dist);
 
     std::cout<<"Using camera at "<< camName<<std::endl;
     std::cout<<"Using calibration file at "<<calibFilePath<<std::endl;
@@ -58,42 +59,34 @@ int main(int argc, char** argv){
     char keypress = 'r';
 
 
-
-
-
     cv::Mat K = zcam.getRectifiedIntrinsicMatrix(nfs::vision::zedCamera::SIDE::LEFT);
 
-    while(keypress != 'q' && validIm){
-        validIm = zcam.step();
+	while(keypress != 'q' && validIm){
+			validIm = zcam.step();
+		
+		if(validIm){	
+			cv::Mat mask;
+			cv::Mat disparityImage  =  zcam.getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
 
-        if(validIm){
-            cv::Mat mask;
-            cv::Mat disparityImage  =  zcam.getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
+			cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.1f , true, 0.8f);
 
-            cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.1 , true, 0.8);
-
-
-        //      std::cout << " Plane eqn is : "<< plane << std::endl;
-            cv::Mat disp;
-
+			std::cout << " Plane eqn is : "<< plane << std::endl;
+			cv::Mat disp;
 
             disparityImage.convertTo(disp, CV_8UC1,0.25);
             cv::imshow("Disparity", disp);
             cv::imshow("Mask", mask);
-            keypress = (char)cv::waitKey(1);
 
+            keypress = static_cast<char>(cv::waitKey(1));
             if(keypress == 's'){
-                //zcam.savePointcloud("pc",true,"XYZ");zcam.savePointcloud("pc",true,"PCD");
-                std::vector<cv::Point3d>  vec =   nfs::vision::filterPointCloud::filterLIDARLike(   disparityImage,  K  ,  plane,  0.5, 0.02);
-                cv::Mat  vecMat =   nfs::vision::filterPointCloud::topView(vec,plane,1);
+zcam.savePointcloud("pc",true,"PLY");
+//zcam.savePointcloud("pc",true,"XYZ");zcam.savePointcloud("pc",true,"PCD");
+//  std::vector<cv::Point3d>  vec =   nfs::vision::filterPointCloud::filterLIDARLike(   disparityImage,  K  ,  plane,  0.5, 0.02);
+// cv::Mat  vecMat =   nfs::vision::filterPointCloud::topView(vec,plane,1);
 
-                std::cout<<vecMat;
-
-
+// std::cout<<vecMat;
             }
-
-
         }
     }
-
 }
+

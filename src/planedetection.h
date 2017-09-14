@@ -32,7 +32,7 @@
 //series of plane fitting methods to the depth estimates from zed camera
 #ifndef PLANEDETECTION_H
 #define PLANEDETECTION_H
-#include"zedCamera.h"
+#include"datatypes.h"
 
 
 
@@ -55,7 +55,7 @@ public:
      * \param inlierProbability if RANSAC is used this values indicates inlier probability to be used
      * \return equation of plane in 3D aX + bY + cZ +d =0 as  [a, b, c, d]
      */
-    static cv::Scalar detect(zedCamera::measureImage const &  depthMap, const cv::Mat intrinsicMatrix,
+    static cv::Scalar detect(measureImage const &  depthMap, const cv::Mat intrinsicMatrix,
                              const float camHtInMeters , cv::Mat &maskImage, const float tolerance = 0.05f, bool useRANSAC = false, const float inlierProbability = 0.7f);
 private:
 
@@ -74,7 +74,7 @@ private:
  * \param tolerance tolerance in meters around the plane
  * \return vector of filtered 3D points, also sets the mask
  */
-    static std::vector<cv::Point3d> filterPoints(zedCamera::measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
+    static std::vector<cv::Point3d> filterPoints(measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
                                                  const float camHtInMeters, cv::Mat& maskImage, const float tolerance);
 
 

@@ -45,6 +45,7 @@
 
 #include "glog/logging.h"
 using namespace cua;
+using namespace ext_stereo;
 const float INV_255 = 0.00392156863;
 
 __constant__ StereoMatcher::Options c_options;
@@ -58,14 +59,14 @@ inline void gpuAssert(cudaError_t code, const char *file, int line,
   if (code != cudaSuccess) {
     fprintf(stderr, "GPUassert: %s %s %d\n", cudaGetErrorString(code), file,
             line);
-    if (abort) exit(code);
+    if (abort) std::exit(static_cast<int>(code));
   }
 }
 #define CUDA_CHECK_ERROR CUDA_CHECK(cudaPeekAtLastError())
 
 #define CUDA_TIMER_START
 #define CUDA_TIMER_STOP(var)
-//#define CUDA_TIMER_START     \
+/*#define CUDA_TIMER_START     \
 //  {                          \
 //    cudaEvent_t start, stop; \
 //    cudaEventCreate(&start); \
@@ -76,8 +77,8 @@ inline void gpuAssert(cudaError_t code, const char *file, int line,
 //  cudaEventRecord(stop);                   \
 //  cudaEventSynchronize(stop);              \
 //  cudaEventElapsedTime(&var, start, stop); \
-//  }
-
+  }
+*/
 //------------------------------------------------------------------------------
 
 // converts a BGRA color into an intensity value in the range [0, 1]

@@ -33,7 +33,7 @@
 #include "planedetection.h"
 namespace nfs{ namespace vision{
 
-cv::Scalar planeDetectBasic::detect(zedCamera::measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
+cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
                                     const float camHtInMeters, cv::Mat& maskImage, const float tolerance , bool useRANSAC, const float inlierProbability){
 
     cv::Scalar plane = cv::Scalar(0,0,0,0);
@@ -81,17 +81,17 @@ cv::Scalar planeDetectBasic::detect(zedCamera::measureImage const &  depthMap,cv
 }
 
 
-std::vector<cv::Point3d> planeDetectBasic::filterPoints(zedCamera::measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
+std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
                                                         const float camHtInMeters, cv::Mat& maskImage, const float tolerance ){
     maskImage = cv::Mat::zeros(depthMap.rows,depthMap.cols,CV_8UC1);
 
     std::vector<cv::Point3d> pts;
 
-    const double fx = intrinsicMatrix.at<double>(0,0);
-    const double fy = intrinsicMatrix.at<double>(1,1);
+    const float fx = static_cast<float>(intrinsicMatrix.at<double>(0,0));
+    const float fy = static_cast<float>(intrinsicMatrix.at<double>(1,1));
 
-    const double cx = intrinsicMatrix.at<double>(0,2);
-    const double cy = intrinsicMatrix.at<double>(1,2);
+    const float cx = static_cast<float>(intrinsicMatrix.at<double>(0,2));
+    const float cy = static_cast<float>(intrinsicMatrix.at<double>(1,2));
 
     // In 3D $aX + bY + cZ +d = 0$
 
@@ -104,7 +104,7 @@ std::vector<cv::Point3d> planeDetectBasic::filterPoints(zedCamera::measureImage 
             //z is in meters
             float z = depthPtr[c];
 
-            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - 10000)  <  FLOAT_EPSILON ) // invalid depth flag for opencv
+            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - INVALID_DEPTH)  <  FLOAT_EPSILON ) // invalid depth flag for opencv
                 continue;
 
 
