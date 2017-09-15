@@ -62,7 +62,11 @@ zedCamera::zedCamera(const std::string camName, const std::string path2Calibrati
     construct();
 }
 
+zedCamera::zedCamera(const int camera_id, const std::string path2CalibrationFile, const  RESOLUTION res, const int fps, const  bool enableDisparityFlag, const bool useGPU):
+    m_path2Calibration(path2CalibrationFile),m_res(res), m_disparityFlag(enableDisparityFlag),m_useGPU(useGPU),m_fps(fps), m_cam(cv::VideoCapture(camera_id)){
 
+    construct();
+}
 
 zedCamera::zedCamera(const RESOLUTION res, const int fps):
     m_path2Calibration(""),m_res(res), m_disparityFlag(false),m_useGPU(false),m_fps(fps), m_cam(cv::VideoCapture(0)){

@@ -164,6 +164,16 @@ public:
      */
     zedCamera(const std::string camName, const std::string path2CalibrationFile, const RESOLUTION res, const int fps, const bool enableDisparityFlag, const bool useGPU =false);
 
+    /*!
+     * \brief zedCamera   complex constructor, can access all the feeds inlcuding depth, disparity, raw, rectified and undistorted
+     * \param cam_id Index of the camera
+     * \param path2CalibrationFile path to calibration data file, must use full path
+     * \param res  resolution demanded by user, not guaranteed to be available
+     * \param fps  frame rate demanded by user, not guaranteed to be available
+     * \param enableDisparityFlag   if true, disparity image is also computed
+     * \param useGPU flag to use GPU for stereo estimation
+     */
+    zedCamera(const int camera_id, const std::string path2CalibrationFile, const RESOLUTION res, const int fps, const bool enableDisparityFlag, const bool useGPU =false);
 
 
     /*!
