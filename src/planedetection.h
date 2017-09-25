@@ -57,6 +57,19 @@ public:
      */
     static cv::Scalar detect(measureImage const &  depthMap, const cv::Mat intrinsicMatrix,
                              const float camHtInMeters , cv::Mat &maskImage, const float tolerance = 0.05f, bool useRANSAC = false, const float inlierProbability = 0.7f);
+
+ /*!
+     * \brief detect detects the ground plane using the depth data, disparity is not allowed
+     * \param pointcloud_image Image with 3d points.
+     * \param camHtInMeters distance (+ve) of camera above the ground in meters
+     * \param [out] maskImage Output mask indicating the points filtered by the input filter settings, if RANSAC is not used, also indicates points used to estimate plane, if RANSAC is used a subset of theres points is used
+     * \param tolerance tolerance in meters around the plane
+     * \param useRANSAC flag to use RANSAC
+     * \param inlierProbability if RANSAC is used this values indicates inlier probability to be used
+     * \return equation of plane in 3D aX + bY + cZ +d =0 as  [a, b, c, d]
+     */
+    static cv::Scalar detect( const pointcloudImage &  pointcloud_image, const float camHtInMeters , cv::Mat &maskImage, const float tolerance = 0.05f, bool useRANSAC = false, const float inlierProbability = 0.7f);
+
 private:
 
     /*!
@@ -74,9 +87,28 @@ private:
  * \param tolerance tolerance in meters around the plane
  * \return vector of filtered 3D points, also sets the mask
  */
-    static std::vector<cv::Point3d> filterPoints(measureImage const &  depthMap,cv::Mat const intrinsicMatrix,
-                                                 const float camHtInMeters, cv::Mat& maskImage, const float tolerance);
+    static std::vector<cv::Point3d> filterPoints(measureImage const &  depthMap,cv::Mat const intrinsicMatrix, const float camHtInMeters, cv::Mat& maskImage, const float tolerance);
 
+    /*!
+ * \brief filterPoints filters points around the defined height below the camera and allows points which are within the tolerance
+ * \param pointcloud_image Image containing 3D points.
+ * \param camHtInMeters distance (+ve) of camera above the ground in meters
+ * \param maskImage [out] maskImage Output mask indicating the points filtered by the input filter settings, if RANSAC is not used, also indicates points used to estimate plane, if RANSAC is used a subset of theres points is used
+ * \param tolerance tolerance in meters around the plane
+ * \return vector of filtered 3D points, also sets the mask
+ */
+    static std::vector<cv::Point3d> filterPoints(const pointcloudImage &  pointcloud_image, const float camHtInMeters, cv::Mat& maskImage, const float tolerance);
+
+
+    /*!
+ * \brief filterPoints filters points around the defined height below the camera and allows points which are within the tolerance
+ * \param pts  vector of filtered 3D points.
+ * \param maskImage [out] maskImage Output mask indicating the points filtered by the input filter settings, if RANSAC is not used, also indicates points used to estimate plane, if RANSAC is used a subset of theres points is used
+  * \param useRANSAC flag to use RANSAC
+  * \param inlierProbability if RANSAC is used this values indicates inlier probability to be used
+ * \return equation of  plane
+ */
+static cv::Scalar FitPlanesTo3DPoints(const std::vector<cv::Point3d>& pts, cv::Mat& maskImage,const bool useRANSAC,const float inlierProbability  );
 
     /*!
  * \brief fitPlane given a set of N 3D homogeneous points, fits a plane to it using all N points

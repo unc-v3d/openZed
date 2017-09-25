@@ -29,6 +29,8 @@ if(${WITH_CUDA})
 	set(CUDA_OPENCV_STEREO_SOURCE ${CUDA_OPENCV_STEREO_SOURCE} 
 	${CMAKE_CURRENT_SOURCE_DIR}/cudaopencvstereo.cpp
 	PARENT_SCOPE)
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cudaopencvstereo.h DESTINATION include/stereo/)
 endif()
 
 
@@ -58,7 +60,9 @@ if(${WITH_cudaArrayBM})
 PARENT_SCOPE)
  
 	install(TARGETS cudaArrayBMLib DESTINATION lib/)
-	
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cudaArrayBM.h DESTINATION include/stereo/)
 endif()
+
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/opencvstereo.h ${CMAKE_CURRENT_SOURCE_DIR}/stereointerface.h DESTINATION include/stereo/)
 
 

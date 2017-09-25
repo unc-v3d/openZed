@@ -75,7 +75,7 @@ if(camName.length() == 1){
 			cv::Mat mask;
 			cv::Mat disparityImage  =  zcam->getImage( nfs::vision::zedCamera::IMAGE_MEASURE::DEPTH, 1,128);
 
-			cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask,0.02f , true, 0.8f);
+			cv::Scalar plane = nfs::vision::planeDetectBasic::detect(disparityImage,K,dist,mask, 0.25f , true, 0.8f);
 
 			std::cout << " Plane eqn is : "<< plane << std::endl;
 			cv::Mat disp;
@@ -90,8 +90,8 @@ cv::Mat masked_left_image ;
 
             keypress = static_cast<char>(cv::waitKey(1));
             if(keypress == 's'){
-//zcam->savePointcloud("pc",true,"PLY");
-cv::imwrite("left_image.png",left_color_image);
+zcam->savePointcloud("pc",true,"PLY");
+//cv::imwrite("left_image.png",left_color_image);
 //zcam->savePointcloud("pc",true,"XYZ");zcam->savePointcloud("pc",true,"PCD");
 //  std::vector<cv::Point3d>  vec =   nfs::vision::filterPointCloud::filterLIDARLike(   disparityImage,  K  ,  plane,  0.5, 0.02);
 // cv::Mat  vecMat =   nfs::vision::filterPointCloud::topView(vec,plane,1);

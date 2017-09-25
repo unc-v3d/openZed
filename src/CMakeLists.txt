@@ -66,7 +66,7 @@ set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 install(TARGETS zedCameraApp DESTINATION bin/) 
 install(TARGETS openzed DESTINATION lib/)
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/zedCamera.h ${CMAKE_CURRENT_SOURCE_DIR}/planedetection.h DESTINATION include/)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/zedCamera.h ${CMAKE_CURRENT_SOURCE_DIR}/planedetection.h ${CMAKE_CURRENT_SOURCE_DIR}/datatypes.h ${CMAKE_CURRENT_SOURCE_DIR}/confParser.h DESTINATION include/)
 
 if(DOXYGEN_FOUND) 
 install(DIRECTORY ${CMAKE_BINARY_DIR}/html DESTINATION share/doc)

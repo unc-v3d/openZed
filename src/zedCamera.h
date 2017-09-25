@@ -340,6 +340,15 @@ public:
      */
     void savePointcloud(std::string fname, bool binFlag, std::string format = "PLY");
 
+    /*!
+     * \brief savePointcloud saves the previously computed depth map as color point cloud
+ * \param subset_pointcloud_image Subset of depth image, where invalid pixel are at 10000.
+     * \param fname name of the file including path if not relative, do not add extension
+     * \param binFlag not used currently
+     * \param format pointcloudtype, current supported are PLY, PCD, XYZ (non-colored), by default PLY is saved
+     */
+    void savePointcloud(const pointcloudImage& subset_pointcloud_image, std::string fname, bool binFlag, std::string format = "PLY");
+
 private:
     const std::string m_path2Calibration;
     const RESOLUTION m_res;

@@ -21,7 +21,7 @@ endif()
 # Options
 ################################################################################
 option(WITH_CUDA "WITH_CUDA" ON)
-option(WITH_cudaArrayBM "WITH_cudaArrayBM" ON)
+option(WITH_cudaArrayBM "WITH_cudaArrayBM" OFF)
 option(WITH_QT "WITH_QT means opencv was compiled with QT and hence needs QT" ON)
 
 if(${WITH_CUDA} AND ${WITH_cudaArrayBM})
@@ -71,7 +71,11 @@ if(${WITH_cudaArrayBM})
 endif()
 
 if(${WITH_QT})
-	find_package(Qt5Core REQUIRED)
+find_package(Qt5Widgets 5.7 REQUIRED)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC")
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
 endif()
 
 if(DOXYGEN_FOUND) 
@@ -93,7 +97,7 @@ endif()
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} \
   -std=c++11 -O3 --expt-extended-lambda --expt-relaxed-constexpr -Wno-deprecated-gpu-targets")
 
-set(CMAKE_CXX_STANDARD 11) # only cudaArrayBM needs c++11 support, otherwise openzedZPI is c++03 complaint
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wno-long-long -pedantic")
 ################################################################################
@@ -101,9 +105,9 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 ################################################################################
 
 add_subdirectory(src)
+add_subdirectory(apps)
 # add_subdirectory(src/cudaArray)
 # install path
-# SET(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/install)
 
 
 

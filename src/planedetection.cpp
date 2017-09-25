@@ -34,14 +34,22 @@
 namespace nfs{ namespace vision{
 
 cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const intrinsicMatrix, const float camHtInMeters, cv::Mat& maskImage, const float tolerance , bool useRANSAC, const float inlierProbability){
+ 
+  
 
-    cv::Scalar plane = cv::Scalar(0,0,0,0);
-    cv::Mat model ;
+    std::vector<cv::Point3d> pts = filterPoints(depthMap,intrinsicMatrix,camHtInMeters, maskImage,tolerance );
 
-    std::vector<cv::Point3d> pts = filterPoints(  depthMap,intrinsicMatrix,camHtInMeters, maskImage,tolerance );
+return FitPlanesTo3DPoints( pts, maskImage, useRANSAC,inlierProbability  );
+  
+}
 
 
-    if(pts.empty())
+ cv::Scalar planeDetectBasic::FitPlanesTo3DPoints(const std::vector<cv::Point3d>& pts, cv::Mat& maskImage,const bool useRANSAC,const float inlierProbability  ){
+
+ cv::Scalar plane = cv::Scalar(0,0,0,0);
+ cv::Mat model ;
+
+  if(pts.empty())
         return plane;
 
     cv::Mat ptsMat = cv::Mat(pts).reshape(1); // changes the number of channels into column
@@ -53,12 +61,26 @@ cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const
 
     if(useRANSAC){ //use a RANSAC, pick 3 points  create a plane , find support do itrerations for inlier ratio of inlierRatio
         //using 4 samples so that the fitting is easier
-        RANSAC ransac(  inlierProbability, 0.1f, 4);
+        RANSAC ransac(  inlierProbability, 0.01f,4);
         cv::Mat supportIdx;
         model = ransac.fit( homoPtsMat,  supportIdx,   fitPlane, evalFitPlane);
 
+	// Change mask according to support. Go column-wise and for each 1 in mask, update accoding to suooprt idx.
+  int support_idx_count = 0;
+   for(int r = 0; r < maskImage.rows; r++){
+        uchar* maskPtr = maskImage.ptr<uchar>(r);
+        for( int c = 0; c < maskImage.cols; c++ ){
+ 
+               if( maskPtr[c] == 255){
+			if(supportIdx.at<uchar>(support_idx_count) ==0){
+				maskPtr[c] =255 ;
+ 		}			
+		support_idx_count++;
+		}
+            }
 
-
+        }
+             
 
     } else{// by default uses all the points which pass the filter and does an linear best fit for all the points
         //create a mat out of the vector
@@ -78,6 +100,52 @@ cv::Scalar planeDetectBasic::detect(measureImage const &  depthMap,cv::Mat const
 
     return plane;
 }
+
+  cv::Scalar planeDetectBasic::detect( const pointcloudImage &  pointcloud_image, const float camHtInMeters , cv::Mat &maskImage, const float tolerance, bool useRANSAC, const float inlierProbability){
+
+
+std::vector<cv::Point3d> pts = filterPoints(  pointcloud_image, camHtInMeters,   maskImage,   tolerance);
+
+return FitPlanesTo3DPoints( pts, maskImage, useRANSAC,inlierProbability  );
+}
+
+
+std::vector<cv::Point3d> planeDetectBasic::filterPoints(const pointcloudImage &  pointcloud_image, const float camHtInMeters, cv::Mat& maskImage, const float tolerance ){
+    maskImage = cv::Mat::zeros(pointcloud_image.rows,pointcloud_image.cols,CV_8UC1);
+
+    std::vector<cv::Point3d> pts;
+ 
+
+    // In 3D $aX + bY + cZ +d = 0$
+
+    //selectively use points in a tolerance of += 1 cm around the give height to fit the plane.
+
+    for(int r = 0; r < pointcloud_image.rows; r++){
+        float const*  pointPtr = pointcloud_image.ptr<measureType>(r);
+        uchar* maskPtr = maskImage.ptr<uchar>(r);
+        for( int c = 0; c < pointcloud_image.cols; c++ ){
+            //z is in meters
+            const float z = pointPtr[3*c + 2];
+            const float y = pointPtr[3*c + 1];
+            const float x = pointPtr[3*c];
+
+            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - INVALID_DEPTH)  <  FLOAT_EPSILON ){ // invalid depth flag for opencv
+                continue;
+}
+ 
+if(  y > (camHtInMeters - tolerance) && y < (camHtInMeters + tolerance) )
+{
+
+                pts.push_back(cv::Point3d(x,y,z));
+                maskPtr[c] = 255;
+            }
+
+        }
+    }
+
+    return pts;
+}
+
 
 
 std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  depthMap,const cv::Mat intrinsicMatrix, const float camHtInMeters, cv::Mat& maskImage, const float tolerance ){
@@ -115,7 +183,7 @@ std::vector<cv::Point3d> planeDetectBasic::filterPoints(measureImage const &  de
 
 if(  y > (camHtInMeters - tolerance) && y < (camHtInMeters + tolerance) )
 {
-//std::cout <<cv::Point3d(x,y,z) << ::std::endl;
+ 
                 pts.push_back(cv::Point3d(x,y,z));
                 maskPtr[c] = 255;
             }
@@ -141,7 +209,7 @@ unsigned int planeDetectBasic::evalFitPlane(cv::Mat model, cv::Mat data, cv::Mat
     //data is assumed to be homogeneous
 
     supportIdx = abs(data*model) < threshold;
-
+//std::cout << supportIdx <<std::endl;
     return static_cast<unsigned int>(cv::countNonZero(supportIdx));
 }
 
@@ -171,7 +239,7 @@ const float metersAbovePlane, const float tolerance){
             //z is in meters
             float z = depthPtr[c];
 
-            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - 10000)  <  FLOAT_EPSILON ) // invalid depth flag for opencv
+            if( std::abs(z) < FLOAT_EPSILON ||  std::abs(z - INVALID_DEPTH)  <  FLOAT_EPSILON ) // invalid depth flag for opencv
                 continue;
 
 
@@ -325,8 +393,9 @@ cv::Mat RANSAC::fit(cv::Mat const data, cv::Mat& supportIdx, cv::Mat (*fittingFu
 
         iterCount++;
     }
-
-    return model;
+std::cout << "Support is : " << supportNum*100.0f /data.rows << "%." <<std::endl;
+   
+  return model;
 
 }
 
