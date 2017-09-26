@@ -17,9 +17,11 @@ set(CUDA_EXT_STEREO_SOURCE#
 # creating empty symbol	
 )
 
-
-
 set(CUDA_EXT_STEREO_LIBRARIES# 
+# creating empty symbol	
+)
+
+set(OPENCV_CUDA_LIBRARIES# 
 # creating empty symbol	
 )
 
@@ -31,8 +33,6 @@ if(${WITH_CUDA})
 	PARENT_SCOPE)
 
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/cudaopencvstereo.h DESTINATION include/stereo/)
-endif()
-
 
 set(OPENCV_CUDA_LIBRARIES
 	opencv_cudastereo 
@@ -41,6 +41,9 @@ set(OPENCV_CUDA_LIBRARIES
 	opencv_cudaarithm
 	PARENT_SCOPE
 )
+
+endif()
+
 
 
 if(${WITH_cudaArrayBM})
